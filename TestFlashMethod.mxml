@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute"
+    initialize="init()"  height="342" width="376">
+    
+<mx:Script>
+<![CDATA[
+	import com.sap.methods.MethodService;
+	import com.sap.methods.PdfExport;
+	import com.sap.methods.Utilities;
+	import mx.graphics.codec.PNGEncoder;
+	import flash.system.Security;
+	import mx.utils.Base64Encoder;
+	import flash.display.BitmapData;
+	import flash.utils.ByteArray;
+    
+    private var dataObj:Object;
+    private var _methodService:MethodService;
+    
+    private var arrayId:String;
+
+    private function init():void
+    {
+        var uuid:String = Application.application.parameters.itemUuid;
+        
+		// Change APPLICATION_KEY to the one specified in your bundle.xml
+        MethodService.init("com.sap.mueller.ruediger.flash.gettingstarted", uuid);
+        _methodService = MethodService.getInstance();
+        _methodService.registerCallback("initialData", this.handleInitialData);
+        _methodService.registerCallback("testSetData", this.handleSetData);
+        _methodService.registerCallback("testGetData", this.handleGetData);
+        _methodService.registerCallback("testInsertArrayItem", this.handleInsertArrayItem);
+        _methodService.registerCallback("testUpdateArrayItem", this.handleUpdateArrayItem);
+        _methodService.registerCallback("testDeleteArrayItem", this.handleDeleteArrayItem);
+        _methodService.registerCallback("testGetArrayItem", this.handleGetArrayItem);
+        _methodService.registerCallback("testGetArray", this.handleGetArray);
+        _methodService.registerCallback("testUpdateDataBatch", this.handleUpdateDataBatch);
+        _methodService.registerErrorCallback(this.processErrors)        
+        _methodService.getData(null, "initialData");		
+        
+        validateNow();        
+ 		Utilities.adjustSize(String(Application.application.parameters.elementId), String(mainBox.width), String(mainBox.height));
+        Security.allowDomain("*");
+        PdfExport.enable(mainBox, exportPDF);
+    }
+    
+    
+    
+	public function exportPDF(): String
+    {                
+       //Export our form (mainBox) to a base64 encoded string 
+       var bitmapData:BitmapData; 
+       bitmapData = new BitmapData(mainBox.width, mainBox.height, true, 0xffffff);
+       bitmapData.draw(mainBox);            
+       var bytes:ByteArray = new PNGEncoder().encode(bitmapData);        
+       var b64encoder:Base64Encoder = new Base64Encoder();
+       b64encoder.encodeBytes(bytes);            
+       return b64encoder.flush();
+     }
+    
+    // registered callbacks
+    public function processErrors(messageParams:Object) :void {
+    	textBox.text += "\n An error has occurred: " + messageParams.message;
+    }
+    
+    public function handleInitialData(messageParams:Object) : void {
+        var creatorUuid:String = Application.application.parameters.itemCreatorUuid;
+        var currentView:String = Application.application.parameters.currentView;
+        var elementId:String = Application.application.parameters.elementId;
+
+        dataObj = messageParams.value;   
+        if(dataObj != null) {
+            textBox.text = creatorUuid + ";";
+            textBox.text += currentView + ";";
+            textBox.text += dataObj.first;
+        }
+    }
+        
+    
+    public function handleSetData(messageParams:Object) : void
+    {
+        textBox.text += "\nset_data: path=" + messageParams.path + "; value=" + messageParams.value;
+        textBox.setFocus();
+        textBox.setSelection(textBox.length, textBox.length);
+        
+    }
+    
+    public function handleGetData(messageParams:Object) : void
+    {
+        textBox.text += "\nget_data: path=" + messageParams.path + "; value=" + messageParams.value;
+        textBox.setFocus();
+        textBox.setSelection(textBox.length, textBox.length);
+    }
+    
+    public function handleGetArray(messageParams:Object) : void
+    {
+        textBox.text += "\nget_array: path=" + messageParams.path + "; value=";
+        var arr:Object = messageParams.value;
+        for each(var item:Object in arr) {
+            textBox.text += "\n"
+            for(var j:String in item) {
+                textBox.text += j + "=" + item[j] + "; ";
+            }
+        }
+        textBox.setFocus();
+        textBox.setSelection(textBox.length, textBox.length);
+    }
+    
+    public function handleInsertArrayItem(messageParams:Object) : void
+    {
+        textBox.text += "\ninsert_array_data: path=" + messageParams.path + "; id=" + messageParams.id + "; value=" + messageParams.value;
+        arrayId = messageParams.id;
+        textBox.setFocus();
+        textBox.setSelection(textBox.length, textBox.length);
+    }
+    
+    public function handleUpdateArrayItem(messageParams:Object) : void
+    {
+        textBox.text += "\nupdate_array_data: path=" + messageParams.path + "; id=" + messageParams.id + "; value=" + messageParams.value;
+        textBox.setFocus();
+        textBox.setSelection(textBox.length, textBox.length);
+    }
+    
+    public function handleDeleteArrayItem(messageParams:Object) : void
+    {
+        textBox.text += "\ndelete_array_data: path=" + messageParams.path + "; id=" + messageParams.id;
+        textBox.setFocus();
+        textBox.setSelection(textBox.length, textBox.length);
+    }
+    
+    public function handleGetArrayItem(messageParams:Object) : void
+    {
+        textBox.text += "\nget_array_data: path=" + messageParams.path + "; id=" + messageParams.id + "; value=" + messageParams.value;
+        textBox.setFocus();
+        textBox.setSelection(textBox.length, textBox.length);
+    }
+    
+    public function handleUpdateDataBatch(messageParams:Object) : void
+    {
+        textBox.text += "\nupdate_data_batch: ";
+        var actions:Object = messageParams.actions;
+        for each(var action:Object in actions) {
+            textBox.text += "\naction="+ action.action;
+            textBox.text += "; params=";
+            for (var param:String in action.params) {
+                textBox.text += "\n" + param + "=" + action.params[param] + "; ";
+            }
+        }
+        textBox.setFocus();
+        textBox.setSelection(textBox.length, textBox.length);
+    }
+    
+    // button click handlers
+    
+    private function doSetData():void {        
+        _methodService.setData("first", "hello", "testSetData");        
+    }
+    
+    private function doGetData():void {
+        _methodService.getData("first", "testGetData");
+    }
+
+    private function doGetArray():void {        
+        _methodService.getData("myArr", "testGetArray");
+    }
+
+    private function doInsertArrayItem():void {
+        _methodService.insertArrayItem("myArr", "testing", "testInsertArrayItem");
+        
+        //This function intentionally demonstrates how to capture errors using
+    	//MethodService.registerErrorCallback, by attempting to save an array to an
+    	//object that is not one ("first"). This should be caught by this.processErrors
+        _methodService.insertArrayItem("first", "testing", "testInsertArrayItem");
+        
+    }
+
+    private function doUpdateArrayItem():void {
+        if(arrayId != null) {
+            _methodService.updateArrayItem("myArr", arrayId, "updated", "testUpdateArrayItem");
+        } 
+    }
+
+    private function doDeleteArrayItem():void {
+        if(arrayId != null) {
+            _methodService.deleteArrayItem("myArr", arrayId, "testDeleteArrayItem");
+        } 
+    }
+
+    private function doGetArrayItem():void {
+        if(arrayId != null) {
+            _methodService.getArrayItem("myArr", arrayId, "testGetArrayItem");
+        }
+    }
+
+    private function doUpdateDataBatch():void {
+        var action1:Object = _methodService.createSetDataBatchAction("first", "batch");
+        var action2:Object = _methodService.createInsertArrayItemBatchAction("myArr", "batch");
+        
+        _methodService.updateDataBatch([action1, action2], "testUpdateDataBatch");
+    }
+
+]]>
+</mx:Script>    
+
+    <mx:VBox id="mainBox" width="376">
+        <mx:Button label="set_data" 
+            click="doSetData()" 
+            color="#000000" 
+            fontSize="11" 
+            labelPlacement="right" width="153"/>
+        <mx:Button label="get_data" 
+            click="doGetData()" 
+            color="#000000" 
+            fontSize="11" 
+            labelPlacement="right" width="153"/>
+        <mx:Button label="insert_array_item" 
+            click="doInsertArrayItem()" 
+            color="#000000" 
+            fontSize="11" 
+            labelPlacement="right" width="153"/>
+        <mx:Button label="update_array_item" 
+            click="doUpdateArrayItem()" 
+            color="#000000" 
+            fontSize="11" 
+            labelPlacement="right" width="153"/>
+        <mx:Button label="delete_array_item" 
+            click="doDeleteArrayItem()" 
+            color="#000000" 
+            fontSize="11" 
+            labelPlacement="right" width="153"/>
+        <mx:Button label="get_array_item" 
+            click="doGetArrayItem()" 
+            color="#000000" 
+            fontSize="11" 
+            labelPlacement="right" width="153"/>
+        <mx:Button label="get_array" 
+            click="doGetArray()" 
+            color="#000000" 
+            fontSize="11" 
+            labelPlacement="right" width="153"/>
+        <mx:Button label="update_data_batch" 
+            click="doUpdateDataBatch()" 
+            color="#000000" 
+            fontSize="11" 
+            labelPlacement="right" width="153"/>
+        <mx:TextArea id="textBox" 
+            fontFamily="Arial" 
+            fontSize="12" 
+            width="376"
+            height="108" 
+            text=""/>
+    </mx:VBox>
+
+</mx:Application>
